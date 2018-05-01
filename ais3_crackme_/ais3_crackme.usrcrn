@@ -1,0 +1,29 @@
+g_flag = ''
+g_chr = 20
+
+on code 0x400541 do
+  -- update the user input character to try
+  rax = (rax & ~0xff) + g_chr
+end
+
+on code 0x40059d do
+  -- Success case, update the flag with the correct character
+  g_flag = g_flag .. chr(g_chr)
+end 
+
+on code 0x400596 do
+  -- Failure case, tested char was incorrect, try again
+  rip = 0x400531
+  g_chr = g_chr + 1
+
+  if g_chr > 125 then 
+    g_chr = 20
+  end
+
+end
+
+on sys 'exit_group' do
+  print 'FLAG: %s' %{g_flag}
+end
+
+

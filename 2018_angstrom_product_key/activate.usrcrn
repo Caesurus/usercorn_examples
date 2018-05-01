@@ -1,0 +1,27 @@
+g_cnt = 0
+g_key = {}
+
+on code 0x400fb8 do
+  print ''
+  eax_ = (rax & 0xffffffff)
+  edx_ = (rdx & 0xffffffff) 
+  if ((edx_ & 0x80000000)>>31 == 1) then
+    edx_ = 0x100000000 - edx_
+    edx_ = 0 - edx_
+  end
+  serial_key = int(eax_) - int(edx_)
+  print 'eax(%6d) - edx(%6d) = key[%d] %d' %{eax_, edx_, g_cnt, serial_key}
+  g_cnt = g_cnt + 1
+  g_key[g_cnt] = serial_key
+
+end
+
+on code 0x40114a do
+  -- patch exit value so that we don't panic usercorn
+  rax = 1
+end
+
+on sys 'exit_group' do
+  print 'FLAG: %d-%d-%d-%d-%d-%d' %{g_key[5], g_key[1], g_key[2], g_key[6], g_key[3], g_key[4]}
+end
+

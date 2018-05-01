@@ -1,0 +1,1 @@
+~/usercorn/usercorn run -ex 1337ARM.usrcrn 1337ARM.bin AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
