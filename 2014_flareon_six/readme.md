@@ -199,9 +199,11 @@ A couple of things that I noticed
 3 - `0x43716b: xor edx, 0x56` is interesting... Lets open up our _favorite affordable disassembler_ BinaryNinja
 
 ![alt text](img_arg1_xor.png "Disassemblers are useful")
+
 Seems like a cool little loop happening, the loop exits at `0x4371bf`.
 We can investigate register states using the traces we already took.
 It looks like the loop takes values at `rbp-0xc4 + rbp-0x230` and xors by 0x56. We can see `rbp-0x230` is being passed to a function along with the address `0x4f3bf6` which has the string "bngcg\`debd".
+
 Lets see if we just xor that..
 ```
 >>> import sys
@@ -210,11 +212,15 @@ Lets see if we just xor that..
 ...
 4815162342>>>
 ```
+
 So we're betting that is the first argument.
+
 Let's check what we get:
 `$ /home/code/usercorn/usercorn run -inscount -ex 1-patch_ptrace.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 AAAAAAAAAAAAAAAAAAAA`
 
+
 This doesn't seem to return, I waited a good 30 seconds before canceling it.
+
 Sanity check, change last character of the first argument and check again.
 ```
 $ /home/code/usercorn/usercorn run -inscount -ex 1-patch_ptrace.usrcrn ./e7bc5d2c0cf4480348f5504196561297 481516234A AAAAAAAAAAAAAAAAAAAA
@@ -246,6 +252,7 @@ R 0x0072c83c: 00000000                                       [....              
 ```
 
 ![alt text](img_hang.png "Looks like we're stuck in a syscall 0x23")
+
 Looks like we're stuck in a syscall 0x23
 ```
 #               : 35
@@ -285,8 +292,8 @@ And there we have it... got the flag!:
 Now... I want to see if I can solve it without the instruction counts.
 Let's do the trick with two traces and running a diff again.
 ```
-$ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 1AAAAAAAAAAAAAAAAAAA &> trace_1.out                                                                                                                                                                                      
-code@hackbox2:~/usercorn_examples/2014_flareon_six$ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 2AAAAAAAAAAAAAAAAAAA &> trace_2.out                                          
+$ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 1AAAAAAAAAAAAAAAAAAA &> trace_1.out
+$ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 2AAAAAAAAAAAAAAAAAAA &> trace_2.out
 ```
 ```
 < 0x476308: rdtsc                                              | rax = 0x00000000fdd3c3cd
