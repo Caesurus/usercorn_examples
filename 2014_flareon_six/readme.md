@@ -191,8 +191,11 @@ $ diff trace_char1.out trace_char2.out
 > 0x46c28b: sub eax, ecx                                       | rax = 0x0000000000000002
 ```
 A couple of things that I noticed
+
 1 - `rdtsc` is being used. Probably another anti-debug mechanism being utilized. Not sure that matters here though since we're probably fast enough.
+
 2 - `0x46a24e: movzx ecx, byte ptr [rsi]` seems to be where our input is being consumed.
+
 3 - `0x43716b: xor edx, 0x56` is interesting... Lets open up our _favorite affordable disassembler_ BinaryNinja
 
 ![alt text](img_arg1_xor.png "Disassemblers are useful")
