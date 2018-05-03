@@ -15,10 +15,12 @@ no
 inscount: 56057
 ```
 Let's start adding arguments and check counts
+```
 0: 56057
 1: 274148
 2: error
 3: 314987
+```
 
 With 2 arguments we get:
 ```
@@ -92,6 +94,21 @@ Looks like a pretty typical `if (ptrace(PTRACE_TRACEME, 0, 1, 0) == -1)`
 So let's create a patch to NOP the call and proceed:
 [1-patch_ptrace.usrcrn](1-patch_ptrace.usrcrn)
 
+Here I've implemented two different ways of getting around this syscall.
+```
+on code 0x474319 do
+  rax = 0
+  rip = 0x474346
+end
+```
+or, I can simply patch the binary
+```
+patch 0x474319 'nop'
+patch 0x474320 'nop'
+patch 0x474321 'jmp 0x474346'
+```
+Additionally, you can also call usercorn with `-stubsys` to ignore unimplemented syscalls.
+I decided to go with the first `on code xxxx do` method, because I didn't want to hide any other syscalls that may be missing.
 ```
 $ ~/usercorn/usercorn run -inscount -ex 1-patch_ptrace.usrcrn ./e7bc5d2c0cf4480348f5504196561297 1 2                                            
 bad
