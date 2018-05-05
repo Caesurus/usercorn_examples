@@ -222,7 +222,7 @@ We can investigate register states using the traces we already took.
 It looks like the loop takes values at `rbp-0xc4 + rbp-0x230` and xors by 0x56. We can see `rbp-0x230` is being passed to a function along with the address `0x4f3bf6` which has the string "bngcg\`debd".
 
 Lets see if we just xor that..
-```
+```python
 >>> import sys
 >>> for c in "bngcg`debd":
 ...   sys.stdout.write(chr(ord(c)^0x56))
@@ -249,7 +249,7 @@ So we're on to something!. Just running the application straight also takes a lo
 `$ /home/code/usercorn/usercorn run -trace -ex 1-patch_ptrace.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 AAAAAAAAAAAAAAAAAAAA`
 
 This is how the trace ends:
-```
+```C
 0x47c9c8: ret                                                | rsp = 0x00000000bfffe190 | R bfffe188                                                                                              
 R 0xbfffe188: dc3b4700 00000000                              [.;G.....            ] R                                                                                                             
 0x473bdc: test eax, eax                                      |                                                                                                                                    
@@ -279,7 +279,7 @@ rdi             : struct timespec *rqtp
 rsi             : struct timespec *rmtp
 ```
 So we're sleeping for a long time. Lets fix that by telling usercorn to just ignore that:
-```
+```lua
 on sys_pre 'nanosleep' do
   print 'Trying to sleep... NO WAY! Wake up sleepyhead!'
   return true
@@ -312,7 +312,7 @@ Let's do the trick with two traces and running a diff again.
 $ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 1AAAAAAAAAAAAAAAAAAA &> trace_1.out
 $ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 2AAAAAAAAAAAAAAAAAAA &> trace_2.out
 ```
-```
+```python
 < 0x476308: rdtsc                                              | rax = 0x00000000fdd3c3cd
 <                                                              + rdx = 0x000000000021ad9b
 < 0x47630a: shl rdx, 0x20                                      | rdx = 0x0021ad9b00000000
@@ -338,7 +338,7 @@ $ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc
 > R 0xbffff2a7: 8c      
 ```
 What is interesting here is that the address `0xbfff....` Lets find the jump to it...
-```
+```C
 0x44bb28: mov rdi, rax                                       | rdi = 0x00000000bffff2a7
 0x44bb2b: call rdx                                           | rsp = 0x00000000bfffdd88 | W bfffdd88
 0xbfffdda0: mov rax, rdi                                     |
@@ -347,7 +347,7 @@ R 0xbffff0b8: 00000000 00000000                              [........          
 W 0xbfffdd88: 2dbb4400 00000000    
 ```
 So `0x44bb2b` makes the call to it. Lets see where else this memory address is used:
-```
+```C
 $ grep 0xbfffdda0 trace_2.out
 W 0xbfffdda0: [skipped 0x3e8 null bytes] W
 W 0xbfffdda0: 4889f8                                         [H..                 ] W
@@ -356,13 +356,13 @@ W 0xbfffdda0: 4889f8                                         [H..               
 This looks like some code is being copied into a memory mapped area so that it's harder to analyze...
 
 I want a usercorn script to dump that memory for me... wait, actually just give me the disassembly:
-```
+```lua
 on code 0x44bb2b do
   dis(0xbfffdda0, 0x3e8)
 end
 ```
 And this gives me:
-```
+```C
 0xbfffdda0: mov rax, rdi
 0xbfffdda3: call 0xbfffdda8
 0xbfffdda8: mov rbx, qword ptr [rsp]
@@ -592,52 +592,11 @@ And this gives me:
 0xbfffe01f: push 0x29
 0xbfffe021: pop rax
 0xbfffe022: syscall
-0xbfffe024: mov r8, rax
-0xbfffe027: xor rsi, rsi
-0xbfffe02a: xor r10, r10
-0xbfffe02d: push r10
-0xbfffe02f: mov byte ptr [rsp], 2
-0xbfffe033: mov word ptr [rsp + 2], 0x29a
-0xbfffe03a: mov dword ptr [rsp + 4], 0x564b1e09
-0xbfffe042: mov rsi, rsp
-0xbfffe045: push 0x10
-0xbfffe047: pop rdx
-0xbfffe048: push r8
-0xbfffe04a: pop rdi
-0xbfffe04b: push 0x2a
-0xbfffe04d: pop rax
-0xbfffe04e: syscall
-0xbfffe050: xor rsi, rsi
-0xbfffe053: push 3
-0xbfffe055: pop rsi
-0xbfffe056: dec rsi
-0xbfffe059: push 0x21
-0xbfffe05b: pop rax
-0xbfffe05c: syscall
-0xbfffe05e: jne 0xbfffe056
-0xbfffe060: xor rdi, rdi
-0xbfffe063: push rdi
-0xbfffe064: push rdi
-0xbfffe065: pop rsi
-0xbfffe066: pop rdx
-0xbfffe067: movabs rdi, 0x68732f6e69622f2f
-0xbfffe071: shr rdi, 8
-0xbfffe075: push rdi
-0xbfffe076: push rsp
-0xbfffe077: pop rdi
-0xbfffe078: push 0x3b
-0xbfffe07a: pop rax
-0xbfffe07b: syscall
-0xbfffe07d: nop
-0xbfffe07e: jmp 0xbfffe080
-0xbfffe080: add byte ptr [rax], al
-0xbfffe082: add byte ptr [rax], al
-0xbfffe084: add byte ptr [rax], al
 ```
 
 So there you have it, you can now convert it character by character
 EG:
-```
+```python
 0xbfffddca: xor byte ptr [rax], 0x40
 0xbfffddcd: xor byte ptr [rax], 0xf2
 0xbfffddd0: xor byte ptr [rax], 0xb3
@@ -646,4 +605,76 @@ EG:
 ```
 would be: `chr(0x40^0xf2^0xb3^0x30) = '1'`
 
-I hope this highlights how powerful and useful the usercorn tool is.
+We can take this a step further and implement this logic inside the usecorn script!
+
+When we reach the code in question, grab the disassembly from the address in `rbx`.
+
+```lua
+on code 0x44bb2b do
+  -- rdx is the mem location holding decipher asm. This could differ
+  -- depending on the length of our argv[2]
+  -- step through and find the first syscall, our decipher starts after that.
+  arr = u.dis(rdx, 0x300)
+  for idx,inst in pairs(arr) do
+    if 'syscall' == inst['name'] then
+      found_char = analyze_and_invert_next_chunk( arr[idx+1]['addr'] )
+      -- Add the character we found to the flag string
+      flag = flag .. found_char
+      break
+    end
+  end
+  ...
+  ...
+  ...
+```
+
+Then implement some logic to reverse the order of the instructions, and calculate the expected values:
+```lua
+func analyze_and_invert_next_chunk(start_addr)
+  arr = u.dis(start_addr, 0x120)
+  last_idx = find_chunk_end_addr(arr)
+  calc_byte = 0
+
+  -- Implement local interpreter for the asm
+  -- Work backwards
+  for i = last_idx, 1, -1 do
+    data_byte = arr[i]['ops'][2]
+
+    --print arr[i]
+    if 'cmp' == arr[i]['name'] then
+      calc_byte = data_byte
+    elif 'ror' == arr[i]['name'] then
+      shift_by = data_byte % 8
+      calc_byte = rol_byte(calc_byte, shift_by)
+    elif 'rol' == arr[i]['name'] then
+      shift_by = data_byte % 8
+      calc_byte = ror_byte(calc_byte, shift_by)
+    elif 'xor' == arr[i]['name'] then
+      calc_byte = calc_byte ^ data_byte
+    elif 'sub' == arr[i]['name'] then
+      calc_byte = (calc_byte + data_byte) & 0xff
+    elif 'add' == arr[i]['name'] then
+      if calc_byte < data_byte then
+        calc_byte = calc_byte + 0x100
+      end
+      calc_byte = calc_byte-data_byte
+    end
+
+  end
+  return chr(calc_byte)
+end
+```
+
+For those interested in the full script, [It's Here](8-full_solve.usrcrn).
+Now run it, and have it print the flag.
+```
+$ ~/usercorn/usercorn run -ex 8-full_solve.usrcrn e7bc5d2c0cf4480348f5504196561297 4815162342 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Trying to sleep... NO WAY! Wake up sleepyhead!
+Trying to sleep... NO WAY! Wake up sleepyhead!
+Trying to sleep... NO WAY! Wake up sleepyhead!
+Trying to sleep... NO WAY! Wake up sleepyhead!
+Trying to sleep... NO WAY! Wake up sleepyhead!
+FLAG: l1nhax.hurt.u5.a1l@flare-on.com
+```
+
+I hope this highlights how versatile, powerful and useful the usercorn tool is.
