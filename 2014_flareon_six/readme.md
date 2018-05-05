@@ -312,7 +312,7 @@ Let's do the trick with two traces and running a diff again.
 $ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 1AAAAAAAAAAAAAAAAAAA &> trace_1.out
 $ /home/code/usercorn/usercorn run -trace -ex 5-patch_ptrace_sleep.usrcrn ./e7bc5d2c0cf4480348f5504196561297 4815162342 2AAAAAAAAAAAAAAAAAAA &> trace_2.out
 ```
-```python
+```C
 < 0x476308: rdtsc                                              | rax = 0x00000000fdd3c3cd
 <                                                              + rdx = 0x000000000021ad9b
 < 0x47630a: shl rdx, 0x20                                      | rdx = 0x0021ad9b00000000
