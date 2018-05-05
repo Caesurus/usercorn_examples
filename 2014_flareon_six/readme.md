@@ -33,7 +33,7 @@ This means the application is calling the ptrace syscall, which is not implement
 
 We can add the `-trace` argument and check what parameters are being passed to ptrace.
 
-```
+```C
 0x41f1fd: mov edx, 1                                         | rdx = 0x0000000000000001
 0x41f202: mov esi, 0                                         | rsi = 0x0000000000000000
 0x41f207: mov edi, 0                                         | rdi = 0x0000000000000000
@@ -77,7 +77,7 @@ W 0xbfffe110: 20000000                                       [ ...              
 Kernel not found for syscall 'ptrace'
 ```
 Definition of the syscall:
-```
+```C
 #               : 101
 Name            : ptrace
 rax             : 0x65
@@ -95,14 +95,14 @@ So let's create a patch to NOP the call and proceed:
 [1-patch_ptrace.usrcrn](1-patch_ptrace.usrcrn)
 
 Here I've implemented two different ways of getting around this syscall.
-```
+```lua
 on code 0x474319 do
   rax = 0
   rip = 0x474346
 end
 ```
 or, I can simply patch the binary
-```
+```lua
 patch 0x474319 'nop'
 patch 0x474320 'nop'
 patch 0x474321 'jmp 0x474346'
@@ -138,7 +138,8 @@ Doesn't look like that makes much difference at the moment. Lets pick something 
 Mmmm, I'm not getting any difference in counts. Lets see if we can spot a difference between two traces:
 `/home/code/usercorn/usercorn run -trace -inscount -ex 1-patch_ptrace.usrcrn ./e7bc5d2c0cf4480348f5504196561297 1AAAAAAAAA AAAAAAAAAAAAAAAAAAAA &> trace_char1.out`
 `/home/code/usercorn/usercorn run -trace -inscount -ex 1-patch_ptrace.usrcrn ./e7bc5d2c0cf4480348f5504196561297 2AAAAAAAAA AAAAAAAAAAAAAAAAAAAA &> trace_char2.out`
-```
+
+```C
 $ diff trace_char1.out trace_char2.out
 1271c1271
 < 0x45dde1: mov rax, qword ptr [rax]                           | rax = 0x412f22e7193899cb | R bffffff0
